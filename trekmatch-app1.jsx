@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import {
   Mountain, Menu, X, Star, ShieldCheck, MapPin, Clock, Users,
   CreditCard, CheckCircle2, ChevronRight, ChevronLeft, Camera,
-  Phone, Mail, Instagram, Facebook, Youtube, Award, Heart,
+  Phone, Mail, Award, Heart,
   AlertCircle, Eye, EyeOff, Backpack, Droplet, Thermometer,
   Lock, HelpCircle, Compass, Tent, Footprints, Snowflake,
   ClipboardCheck, UserCircle2, ArrowRight, Plus, Minus,
@@ -388,7 +388,7 @@ function Footer() {
         <div className="max-w-6xl mx-auto px-5 md:px-8 py-5 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="tm-body text-xs opacity-70">© 2026 TrekMatch. Todos los derechos reservados. Miembro adherente de la AAGM.</p>
           <div className="flex items-center gap-3">
-            {[Instagram, Facebook, Youtube].map((Icon, i) => <span key={i} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"><Icon size={15} /></span>)}
+            {[Camera, Users, Heart].map((Icon, i) => <span key={i} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"><Icon size={15} /></span>)}
           </div>
         </div>
       </div>
