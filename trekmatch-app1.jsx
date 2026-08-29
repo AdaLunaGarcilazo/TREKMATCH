@@ -736,9 +736,21 @@ function MedicalFormPage({ go, medical, setMedical, setMedicalDone }) {
   const update = (field) => (e) => setMedical({ ...medical, [field]: e.target.value });
   const handleSubmit = (e) => {
   e.preventDefault();
-  trackEvent("submit_medical_form");
-  setMedicalDone(true);
-  go("landing");
+// ------------------------------------------------------------------
+    // 1. RASTREO GA4: Evento KR2 (Compleción de Ficha Médica Pre-Viaje)
+    // ------------------------------------------------------------------
+    const tieneAlergias = Boolean(medical.allergies && medical.allergies.trim().toLowerCase() !== "ninguna declarada" && medical.allergies.trim() !== "");
+    const tieneCondiciones = Boolean(medical.conditions && medical.conditions.trim().toLowerCase() !== "ninguna" && medical.conditions.trim() !== "");
+
+    if (typeof window !== "undefined" && typeof window.gtag === "function") {
+      window.gtag("event", "submit_medical_form", {
+        has_allergies: tieneAlergias,
+        has_conditions: tieneCondiciones,
+        blood_type: medical.bloodType || "No especificado"
+      });
+    }
+    setMedicalDone(true);
+    go("landing");
 };
   return (
     <div style={{ background: C.cream }} className="min-h-[calc(100vh-64px)]">
@@ -782,6 +794,30 @@ function CheckoutPage({ go, selectedId, medicalDone, expeditions }) {
   const exp = expeditions.find((e) => e.id === selectedId) || expeditions[0];
   const fee = Math.round((exp.price * 0.05) / 1.05);
   const service = exp.price - fee;
+
+  const handlePayment = () => {
+    if (!medicalDone) return;
+    // ------------------------------------------------------------------
+    // RASTREO GA4: Evento KR3 (Purchase - Transacción Exitosa)
+    // ------------------------------------------------------------------
+    if (typeof window !== "undefined" && typeof window.gtag === "function") {
+      window.gtag("event", "purchase", {
+        transaction_id: `TM-${exp.id.toUpperCase().slice(0, 5)}-${Date.now()}`,
+        value: exp.price,
+        currency: "ARS",
+        items: [{
+          item_id: exp.id,
+          item_name: exp.name,
+          price: exp.price,
+          item_category: exp.zone,
+          item_variant: exp.difficulty
+        }]
+      });
+    }
+
+    go("confirmation");
+  };
+
   return (
     <div style={{ background: C.cream }} className="min-h-[calc(100vh-64px)]">
       <div className="max-w-5xl mx-auto px-5 md:px-8 py-12">
@@ -823,12 +859,17 @@ function CheckoutPage({ go, selectedId, medicalDone, expeditions }) {
                 </div>
                 <Field label="Nombre del titular"><input defaultValue="SANTIAGO M. ROJO" className="tm-focus tm-body w-full rounded-lg px-4 py-3 uppercase" style={{ background: "#eef1e6", color: C.forest }} /></Field>
               </div>
-              <button onClick={() => medicalDone && go("confirmation")} disabled={!medicalDone} className="tm-focus tm-body font-bold w-full rounded-xl py-4 mt-6" style={{ background: C.forest, color: C.mustard, opacity: medicalDone ? 1 : 0.5, cursor: medicalDone ? "pointer" : "not-allowed" }if (medicalDone) {
-    trackEvent("purchase", {
-      value: exp.price,
-      currency: "ARS",
-    });
-    go("confirmation");}>
+              <button 
+                onClick={handlePayment} 
+                disabled={!medicalDone} 
+                className="tm-focus tm-body font-bold w-full rounded-xl py-4 mt-6" 
+                style={{ 
+                  background: C.forest, 
+                  color: C.mustard, 
+                  opacity: medicalDone ? 1 : 0.5, 
+                  cursor: medicalDone ? "pointer" : "not-allowed" 
+                }}
+              >
                 Confirmar y Pagar ${exp.price.toLocaleString("es-AR")} ARS
               </button>
               <p className="tm-body text-xs text-center mt-3" style={{ color: "#3a4a1f" }}>Al proceder aceptás nuestros Términos de Servicio y Reglamento de Parques Nacionales.</p>
@@ -844,21 +885,27 @@ function CheckoutPage({ go, selectedId, medicalDone, expeditions }) {
   );
 }
 
-function SummaryRow({ label, full }) {
-  return (
-    <div className="pb-3 border-b" style={{ borderColor: C.sageDeep }}>
-      <div className="tm-body text-xs font-bold uppercase tracking-wide" style={{ color: C.amberDeep }}>{label}</div>
-      <div className="tm-body text-sm font-semibold" style={{ color: C.forest }}>{full}</div>
-    </div>
-  );
-}
-
 /* ============================= CONFIRMATION ============================= */
 
 function ConfirmationPage({ go, selectedId, expeditions }) {
   const exp = expeditions.find((e) => e.id === selectedId) || expeditions[0];
   const [rating, setRating] = useState(5);
   const [sent, setSent] = useState(false);
+  const handleReviewSubmit = () => {
+  // ------------------------------------------------------------------
+  // RASTREO GA4: North Star Metric (Trip Completed con Rating)
+  // ------------------------------------------------------------------
+  if (typeof window !== "undefined" && typeof window.gtag === "function") {
+    window.gtag("event", "trip_completed", {
+      expedition_id: exp.id,
+      expedition_name: exp.name,
+      guide_name: exp.guide?.name || "Desconocido",
+      rating: rating // Valor numérico de 1 a 5
+    });
+  }
+
+  setSent(true);
+};
   return (
     <div style={{ background: C.terracotta }} className="min-h-[calc(100vh-64px)] py-14">
       <div className="max-w-2xl mx-auto px-5 text-center">
@@ -886,7 +933,13 @@ function ConfirmationPage({ go, selectedId, expeditions }) {
                 <textarea rows={3} placeholder="Contanos qué tal te pareció el liderazgo del guía, el ritmo de marcha y la seguridad…" className="tm-focus tm-body w-full rounded-lg px-4 py-3 mb-4 border resize-none" style={{ background: C.olive, borderColor: "rgba(255,255,255,0.3)", color: "white" }} />
                 <div className="flex gap-3">
                   <button className="tm-focus tm-body text-sm font-bold rounded-lg px-4 py-3 border flex items-center gap-2 text-white" style={{ borderColor: "rgba(255,255,255,0.4)" }}><Camera size={16} /> Subir Fotos de Montaña</button>
-                  <button onClick={() => setSent(true)} className="tm-focus tm-body text-sm font-bold rounded-lg px-4 py-3 flex-1" style={{ background: C.forest, color: C.mustard }}>Enviar Reseña</button>
+                  <button 
+  onClick={handleReviewSubmit} 
+  className="tm-focus tm-body text-sm font-bold rounded-lg px-4 py-3 flex-1" 
+  style={{ background: C.forest, color: C.mustard }}
+>
+  Enviar Reseña
+</button>
                 </div>
               </div>
             </>
@@ -1096,6 +1149,20 @@ function GuideExpeditionFormPage({ expedition, guide, onSave, onCancel }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    // ------------------------------------------------------------------
+    // 1. RASTREO GA4: Evento KR1 (Publicación de Expedición por Guía)
+    // ------------------------------------------------------------------
+    if (typeof window !== "undefined" && typeof window.gtag === "function") {
+      window.gtag("event", "publish_expedition", {
+        guide_id: guide?.id || "desconocido",
+        guide_name: guide?.name || "desconocido",
+        expedition_name: form.name,
+        zone: form.zone,
+        difficulty: form.difficulty,
+        price: Number(form.price) || 0,
+        duration: form.duration
+      });
+    }
     onSave({
       ...(expedition || {}),
       name: form.name, zone: form.zone, duration: form.duration, difficulty: form.difficulty,
