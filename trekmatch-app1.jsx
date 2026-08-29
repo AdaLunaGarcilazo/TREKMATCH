@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Mountain, Menu, X, Star, ShieldCheck, MapPin, Clock, Users,
   CreditCard, CheckCircle2, ChevronRight, ChevronLeft, Camera,
@@ -241,6 +241,11 @@ function Field({ label, hint, children }) {
 }
 
 const inputStyle = { borderColor: C.line, color: C.ink };
+const trackEvent = (eventName, parameters) => {
+  if (typeof window !== "undefined" && typeof window.gtag === "function") {
+    window.gtag("event", eventName, parameters);
+  }
+};
 
 /* ============================= HEADERS ============================= */
 
@@ -489,7 +494,11 @@ function LoginPage({ go, setLoggedIn }) {
           <div className="p-8 md:p-10">
             <h1 className="tm-display text-3xl font-bold mb-2" style={{ color: C.forest }}>Ingresá a TrekMatch</h1>
             <p className="tm-body text-sm mb-6" style={{ color: "#5a3d0a" }}>Gestioná tus reservas y fichas médicas en un solo lugar.</p>
-            <form onSubmit={(e) => { e.preventDefault(); setLoggedIn(true); go("landing"); }} className="space-y-4">
+            <form onSubmit={(e) => {
+  e.preventDefault();
+  trackEvent("sign_up", { method: "Formulario" });
+  setLoggedIn(true);
+  go("landing"); className="space-y-4">
               <div>
                 <label className="tm-body text-sm font-bold block mb-1.5" style={{ color: C.forest }}>Correo electrónico</label>
                 <input type="email" placeholder="ejemplo@correo.com" className="tm-focus tm-body w-full rounded-lg px-4 py-3 border-0" style={{ background: "#fff6e2", color: C.forest }} />
@@ -614,6 +623,11 @@ function FilterGroup({ label, options, value, onChange }) {
 
 function ExpeditionDetailPage({ go, selectedId, setSelectedId, expeditions }) {
   const exp = expeditions.find((e) => e.id === selectedId) || expeditions[0];
+  useEffect(() => {
+  trackEvent("view_item", {
+    item_name: exp.name,
+  });
+}, [exp.name]);
   return (
     <div style={{ background: C.cream }} className="min-h-[calc(100vh-64px)]">
       <div style={{ background: C.forest }}><MountainScene variant={exp.mountains} className="w-full h-56 md:h-72" /></div>
@@ -720,7 +734,12 @@ function GuidesPage({ guides }) {
 
 function MedicalFormPage({ go, medical, setMedical, setMedicalDone }) {
   const update = (field) => (e) => setMedical({ ...medical, [field]: e.target.value });
-  const handleSubmit = (e) => { e.preventDefault(); setMedicalDone(true); go("landing"); };
+  const handleSubmit = (e) => {
+  e.preventDefault();
+  trackEvent("submit_medical_form");
+  setMedicalDone(true);
+  go("landing");
+};
   return (
     <div style={{ background: C.cream }} className="min-h-[calc(100vh-64px)]">
       <div className="max-w-3xl mx-auto px-5 md:px-8 py-12">
@@ -804,7 +823,12 @@ function CheckoutPage({ go, selectedId, medicalDone, expeditions }) {
                 </div>
                 <Field label="Nombre del titular"><input defaultValue="SANTIAGO M. ROJO" className="tm-focus tm-body w-full rounded-lg px-4 py-3 uppercase" style={{ background: "#eef1e6", color: C.forest }} /></Field>
               </div>
-              <button onClick={() => medicalDone && go("confirmation")} disabled={!medicalDone} className="tm-focus tm-body font-bold w-full rounded-xl py-4 mt-6" style={{ background: C.forest, color: C.mustard, opacity: medicalDone ? 1 : 0.5, cursor: medicalDone ? "pointer" : "not-allowed" }}>
+              <button onClick={() => medicalDone && go("confirmation")} disabled={!medicalDone} className="tm-focus tm-body font-bold w-full rounded-xl py-4 mt-6" style={{ background: C.forest, color: C.mustard, opacity: medicalDone ? 1 : 0.5, cursor: medicalDone ? "pointer" : "not-allowed" }if (medicalDone) {
+    trackEvent("purchase", {
+      value: exp.price,
+      currency: "ARS",
+    });
+    go("confirmation");}>
                 Confirmar y Pagar ${exp.price.toLocaleString("es-AR")} ARS
               </button>
               <p className="tm-body text-xs text-center mt-3" style={{ color: "#3a4a1f" }}>Al proceder aceptás nuestros Términos de Servicio y Reglamento de Parques Nacionales.</p>
@@ -1346,7 +1370,7 @@ export default function App() {
         <PortalGatewayPage
           go={go}
           guides={guides}
-          onEnterAsGuide={(id) => { setRole("guide"); setActiveGuideId(id); go("guide-dashboard"); }}
+          onEnterAsGuide={(id) => { trackEvent("login_guide"); setRole("guide"); setActiveGuideId(id); go("guide-dashboard"); }}
           onEnterAsAdmin={() => { setRole("admin"); go("admin-dashboard"); }}
           onStartNewGuide={() => { setRole("guide"); setActiveGuideId(null); go("guide-profile-form"); }}
         />
@@ -1384,7 +1408,19 @@ export default function App() {
           expedition={editingExpeditionId ? expeditions.find((e) => e.id === editingExpeditionId) : null}
           guide={activeGuide}
           onCancel={() => go("guide-dashboard")}
-          onSave={(data) => { upsertExpedition(data); go("guide-dashboard"); }}
+          onSave={(data) => {
+  upsertExpedition(data);
+
+  if (!editingExpeditionId) {
+    trackEvent("publish_expedition", {
+      item_name: data.name,
+      value: data.price,
+      currency: "ARS",
+    });
+  }
+
+  go("guide-dashboard");
+}}
         />
       )}
 
